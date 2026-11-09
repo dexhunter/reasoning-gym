@@ -1,6 +1,6 @@
 """Word ladder task generator"""
 
-from collections import deque
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from random import Random
 from typing import Any, Optional
@@ -144,17 +144,21 @@ class WordLadderDataset(ProceduralDataset):
 
         # Build new graph
         word_set = self.word_sets[word_length]
-        graph = {}
+        letters = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        words = sorted(word_set)
+        graph = {word: set() for word in word_set}
 
-        # Build connections
-        for word in word_set:
-            neighbors = set()
-            for i in range(word_length):
-                for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
-                    neighbor = word[:i] + c + word[i + 1 :]
-                    if neighbor != word and neighbor in word_set:
-                        neighbors.add(neighbor)
-            graph[word] = neighbors
+        # Build connections: words that are equal except at position i share a bucket (in A-Z order)
+        for i in range(word_length):
+            buckets = defaultdict(list)
+            for word in words:
+                buckets[word[:i] + word[i + 1 :]].append(word)
+
+            for bucket in buckets.values():
+                if len(bucket) > 1:
+                    candidates = [word for word in bucket if word[i : i + 1] in letters]
+                    for word in bucket:
+                        graph[word].update(neighbor for neighbor in candidates if neighbor != word)
 
         # Cache and return
         self.word_graphs[word_length] = graph
